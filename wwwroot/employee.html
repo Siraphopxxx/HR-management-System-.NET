@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Portal</title>
+    <link rel="stylesheet" href="common.css">
+    <link rel="stylesheet" href="employee.css">
+    <style>
+        /* (สไตล์วิดเจ็ตตอกบัตร - padding 0.3rem) */
+        #attendanceWidget {
+            background-color: #f4f4f4; border: 1px solid #ddd; border-radius: 8px;
+            padding: 0.3rem; text-align: center; margin-bottom: 2rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        #attendanceWidget h3 { margin-top: 0; color: #333; }
+        #attendanceWidget .time-display { font-size: 1.2rem; color: #555; margin: 1rem 0; }
+        #attendanceWidget .btn-check-in { background-color: #28a745; color: white; padding: 0.8rem 1.5rem; font-size: 1.1rem; }
+        #attendanceWidget .btn-check-out { background-color: #dc3545; color: white; padding: 0.8rem 1.5rem; font-size: 1.1rem; }
+
+        /* (สไตล์วิดเจ็ตประกาศ - 120px) */
+        #announcementWidget {
+            background-color: #fffaf0; border: 1px solid #ffeeba; border-radius: 8px;
+            padding: 1.5rem; margin-bottom: 2rem;
+        }
+        #announcementWidget h2 { margin-top: 0; color: #856404; }
+        .announcement-item {
+            border-bottom: 1px solid #eee; padding: 1rem 0;
+        }
+        .announcement-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .announcement-item h4 { margin: 0 0 0.5rem 0; color: #333; }
+        .announcement-item small { color: #777; font-style: italic; }
+        .announcement-item p { margin: 0.5rem 0 0 0; white-space: pre-wrap; }
+        #announcementList {
+            max-height: 120px; 
+            overflow-y: auto;  
+            padding-right: 1rem; 
+            border-top: 1px solid #ffeeba;
+            border-bottom: 1px solid #ffeeba;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="role-page employee-page">
+         <header>
+            <h1>Employee Portal</h1>
+            <div id="userInfoDisplay">Loading user info...</div> 
+         </header>
+        <main>
+
+            <div id="attendanceWidget">
+                <h3>Time Attendance</h3>
+                <div id="attendanceStatus"><p>Loading attendance status...</p></div>
+            </div>
+
+            <div id="announcementWidget">
+                <h2>Company Announcements</h2>
+                <div id="announcementList"><p>Loading announcements...</p></div>
+            </div>
+
+            <h2>Employee Functions</h2>
+            <div class="function-placeholder">
+                 <button onclick="window.location.href='my_leave.html'">My Leave Requests</button>
+                 <button onclick="window.location.href='my_attendance.html'" style="background-color: #17a2b8;">My Attendance History</button>
+                 <button onclick="window.location.href='my_profile.html'">View My Information</button> 
+                 <button onclick="window.location.href='my_tasks.html'" style="background-color: #6f42c1; color: white;">My Tasks</button>
+                 <button onclick="window.location.href='my_payslips.html'" style="background-color: #28a745; color: white;">My Payslips</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="script-rolepages.js"></script>
+    <script>
+        // (*** นี่คือ "โค้ดฉบับเต็ม" ที่ผมเผลอลบไป ***)
+        
+        let currentEmployeeId = null; 
+        const attendanceWidget = document.getElementById('attendanceStatus');
+
+        // (Helper function: แปลง Date)
+        function formatLocalDate(dateString, withTime = false) {
+            try {
+                const date = new Date(dateString);
+                const options = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok' };
+                if (withTime) { options.hour = '2-digit'; options.minute = '2-digit'; }
+                return date.toLocaleString('th-TH', options);
+            } catch (e) { return dateString; }
+        }
+
+        // (ฟังก์ชันโหลดประกาศ)
+        async function loadAnnouncements() {
+            const container = document.getElementById('announcementList');
+            if (!container) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/Announcements`, { method: 'GET' });
+                if (!response.ok) throw new Error(`Failed to fetch announcements: ${response.status}`);
+                const announcements = await response.json();
+                container.innerHTML = ''; 
+                if (announcements.length === 0) {
+                    container.innerHTML = '<p>No announcements at this time.</p>';
+                    return;
+                }
+                announcements.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'announcement-item';
+                    div.innerHTML = `<h4>${item.title}</h4><small>Posted on: ${formatLocalDate(item.postedDate, true)}</small><p>${item.content}</p>`;
+                    container.appendChild(div);
+                });
+            } catch (error) {
+                console.error('Load Announcements Error:', error);
+                container.innerHTML = '<p style="color: red;">Error loading announcements.</p>';
+            }
+        }
+        
+        // (ฟังก์ชัน Render Widget ตอกบัตร)
+        function renderAttendanceWidget(statusData) {
+            if (!attendanceWidget) return;
+            if (!statusData) {
+                attendanceWidget.innerHTML = `<p style="color: #888;">You have not checked in today.</p><button class="btn-check-in" onclick="handleCheckIn()">Check In</button>`;
+                return;
+            }
+            if (statusData.status.toLowerCase() === 'present' && !statusData.checkOut) {
+                attendanceWidget.innerHTML = `<p style="color: green; font-weight: bold;">You are CHECKED IN</p><div class="time-display">Checked In at: ${statusData.checkIn.substring(0,5)}</div><button class="btn-check-out" onclick="handleCheckOut()">Check Out</button>`;
+                return;
+            }
+            if (statusData.status.toLowerCase() === 'present' && statusData.checkOut) {
+                attendanceWidget.innerHTML = `<p style="color: #0056b3; font-weight: bold;">Attendance complete for today.</p><div class="time-display">Checked In: ${statusData.checkIn.substring(0,5)} | Checked Out: ${statusData.checkOut.substring(0,5)}</div>`;
+                return;
+            }
+            if (statusData.status.toLowerCase().includes('holiday') || statusData.status.toLowerCase().includes('on leave')) {
+                 attendanceWidget.innerHTML = `<p style="color: #0056b3; font-weight: bold;">${statusData.status}</p><div class="time-display">No attendance required today.</div>`;
+                return;
+            }
+             attendanceWidget.innerHTML = `<p style="color: #888;">Status: ${statusData.status}</p>`;
+        }
+        
+        // (*** นี่คือฟังก์ชันที่ "หาย" ไป ***)
+        async function loadAttendanceStatus(employeeId) {
+            if (!attendanceWidget) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/attendance/status/${employeeId}`, { method: 'GET' });
+                if (response.status === 404) { renderAttendanceWidget(null); return; }
+                if (!response.ok) { throw new Error(`Failed to fetch status: ${response.status}`); }
+                const statusData = await response.json();
+                renderAttendanceWidget(statusData); 
+            } catch (error) {
+                console.error('Load Status Error:', error);
+                attendanceWidget.innerHTML = '<p style="color: red;">Error loading status.</p>';
+            }
+        }
+        
+        // (ฟังก์ชัน Check In)
+        async function handleCheckIn() {
+            if (!currentEmployeeId) return;
+            attendanceWidget.innerHTML = '<p>Checking in...</p>';
+            try {
+                const response = await fetch(`${API_BASE_URL}/attendance/check-in/${currentEmployeeId}`, { method: 'POST' });
+                if (!response.ok) {
+                    let errorMessage = `Error: ${response.status}`;
+                    try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+                    throw new Error(errorMessage);
+                }
+                const newStatusData = await response.json();
+                renderAttendanceWidget(newStatusData); 
+            } catch (error) {
+                console.error('Check In Error:', error);
+                attendanceWidget.innerHTML = `<p style="color: red;">${error.message}</p>`;
+                setTimeout(() => loadAttendanceStatus(currentEmployeeId), 5000);
+            }
+        }
+        
+        // (ฟังก์ชัน Check Out)
+        async function handleCheckOut() {
+            if (!currentEmployeeId) return;
+            attendanceWidget.innerHTML = '<p>Checking out...</p>';
+            try {
+                const response = await fetch(`${API_BASE_URL}/attendance/check-out/${currentEmployeeId}`, { method: 'POST' });
+                if (!response.ok) {
+                    let errorMessage = `Error: ${response.status}`;
+                    try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+                    throw new Error(errorMessage);
+                }
+                const updatedStatusData = await response.json();
+                renderAttendanceWidget(updatedStatusData); 
+            } catch (error) {
+                console.error('Check Out Error:', error);
+                attendanceWidget.innerHTML = `<p style="color: red;">${error.message}</p>`;
+                setTimeout(() => loadAttendanceStatus(currentEmployeeId), 5000);
+            }
+        }
+
+        // (ฟังก์ชันหลัก)
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentUser = checkAuthAndLoadUserInfo(); 
+            if (currentUser) {
+                currentEmployeeId = currentUser.employeeId;
+                
+                // (*** ตอนนี้ "เรียก" ได้แล้ว เพราะฟังก์ชันอยู่ข้างบน ***)
+                loadAttendanceStatus(currentEmployeeId);
+                loadAnnouncements(); 
+            }
+        });
+    </script>
+</body>
+</html>

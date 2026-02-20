@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Announcements</title>
+    <link rel="stylesheet" href="common.css">
+    <link rel="stylesheet" href="admin.css"> 
+</head>
+<body>
+    <div id="app" class="role-page admin-page"> 
+        <header>
+            <h1>Manage Announcements</h1>
+            <div id="userInfoDisplay">Loading user info...</div>
+        </header>
+        <main>
+            <a href="#" id="backLink" class="back-link">&larr; Back to Dashboard</a>             
+
+
+            <div id="addSection" class="function-placeholder" style="background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 1.5rem; width: 100%; box-sizing: border-box; text-align: left;">
+                <h3>Create New Announcement</h3>
+                <form id="addForm" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <label for="newTitle">Title:</label>
+                        <input type="text" id="newTitle" required style="width: 100%; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label for="newContent">Content:</label>
+                        <textarea id="newContent" required rows="5" style="width: 100%; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px;"></textarea>
+                    </div>
+                    <button type="submit" style="align-self: flex-start; padding: 0.6rem 1.2rem; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Post Announcement</button>
+                </form>
+                <div id="addMessage" class="message"></div>
+            </div>
+
+            <hr style="margin: 2rem 0;">
+
+            <h2>Recent Announcements (Newest first)</h2>
+            <div class="function-placeholder" style="padding: 0; border: none; background: none;">
+                <table id="listTable">
+                    <thead>
+                        <tr>
+                            <th>Posted Date</th>
+                            <th>Title</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listTbody">
+                        </tbody>
+                </table>
+                <div id="listMessage" class="message"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="script-rolepages.js"></script>
+    <script>
+        // --- โค้ดสำหรับหน้านี้โดยเฉพาะ ---
+
+        // (Helper function: แปลง Date)
+        function formatLocalDate(dateString) {
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleString('th-TH', {
+                    year: 'numeric', month: 'long', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit',
+                    timeZone: 'Asia/Bangkok'
+                });
+            } catch (e) { return dateString; }
+        }
+
+        // 1. ฟังก์ชันโหลด Announcements
+        async function loadAnnouncements() {
+            const tbody = document.getElementById('listTbody');
+            const messageDiv = document.getElementById('listMessage');
+            if (!tbody || !messageDiv) return;
+
+            tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+            showMessage('listMessage', '');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/Announcements`, { method: 'GET' });
+                if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
+
+                const announcements = await response.json();
+                tbody.innerHTML = ''; 
+
+                if (announcements.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3">No announcements found.</td></tr>';
+                    return;
+                }
+
+                announcements.forEach(item => {
+                    const tr = document.createElement('tr');
+                    const safeTitle = item.title.replace(/'/g, "\\'");
+                    // (เราจะส่ง Content ไปให้ Prompt ด้วย แต่ต้อง Escape มันก่อน)
+                    const safeContent = item.content.replace(/'/g, "\\'").replace(/\n/g, "\\n");
+
+                    tr.innerHTML = `
+                        <td>${formatLocalDate(item.postedDate)}</td>
+                        <td>${item.title}</td>
+                        <td class="actions-cell">
+                            <button class="btn-edit" onclick="editAnnouncement(${item.announcementId}, '${safeTitle}', '${safeContent}')">Edit</button>
+                            <button class="btn-delete" onclick="deleteAnnouncement(${item.announcementId}, '${safeTitle}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (error) {
+                console.error('Load Error:', error);
+                showMessage('listMessage', error.message);
+                tbody.innerHTML = `<tr><td colspan="3" style="color: red;">Error loading data.</td></tr>`;
+            }
+        }
+
+        // 2. ฟังก์ชัน Add Announcement
+        function setupAddForm() {
+            const addForm = document.getElementById('addForm');
+            if (!addForm) return;
+
+            addForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                showMessage('addMessage', 'Posting...');
+                
+                const writeModel = {
+                    title: document.getElementById('newTitle').value,
+                    content: document.getElementById('newContent').value
+                };
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/Announcements`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(writeModel)
+                    });
+
+                    if (!response.ok) {
+                        let errorMessage = `Error: ${response.status}`;
+                        try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+                        throw new Error(errorMessage);
+                    }
+
+                    const created = await response.json();
+                    showMessage('addMessage', `Announcement '${created.title}' posted successfully.`, true);
+                    addForm.reset();
+                    loadAnnouncements(); // โหลดตารางใหม่
+                } catch (error) {
+                    console.error('Add Error:', error);
+                    showMessage('addMessage', error.message);
+                }
+            });
+        }
+
+        // 3. ฟังก์ชัน Delete Announcement
+        async function deleteAnnouncement(id, title) {
+            if (!confirm(`Are you sure you want to delete: ${title}?`)) {
+                return;
+            }
+            
+            showMessage('listMessage', `Deleting ${title}...`);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/Announcements/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    let errorMessage = `Error: ${response.status}`;
+                    try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+                    throw new Error(errorMessage);
+                }
+
+                showMessage('listMessage', `Announcement '${title}' deleted.`, true);
+                loadAnnouncements(); // โหลดตารางใหม่
+
+            } catch (error) {
+                console.error('Delete Error:', error);
+                showMessage('listMessage', error.message);
+            }
+        }
+
+        // 4. ฟังก์ชัน Edit Announcement (แบบ Prompt ง่ายๆ)
+        async function editAnnouncement(id, oldTitle, oldContent) {
+            const newTitle = prompt("Enter new title:", oldTitle);
+            if (!newTitle || newTitle.trim() === "") return; // ถ้ากด Cancel
+            
+            const newContent = prompt("Enter new content:", oldContent.replace(/\\n/g, "\n")); // (แปลง \n กลับเป็น Enter)
+            if (newContent === null) return;
+
+            const writeModel = {
+                title: newTitle,
+                content: newContent
+            };
+                
+            showMessage('listMessage', `Updating ${id}...`);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/Announcements/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(writeModel)
+                });
+
+                if (!response.ok) {
+                    let errorMessage = `Error: ${response.status}`;
+                    try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+                    throw new Error(errorMessage);
+                }
+                
+                showMessage('listMessage', `Announcement ${id} updated to '${newTitle}'.`, true);
+                loadAnnouncements(); // โหลดตารางใหม่
+                
+            } catch (error) {
+                 console.error('Update Error:', error);
+                 showMessage('listMessage', error.message);
+            }
+        }
+
+        // --- รันฟังก์ชันเมื่อหน้าเว็บโหลด ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentUser = checkAuthAndLoadUserInfo();
+            if (currentUser) {
+                // (เราจะให้ Admin ทำหน้าที่นี้ไปก่อน)
+                if (currentUser.role === 'Admin' || currentUser.role === 'HR') {
+
+if (currentUser.role === 'Admin') {
+                        document.getElementById('backLink').href = 'admin.html';
+                    } else {
+                        document.getElementById('backLink').href = 'hr.html';
+                    }
+                    setupAddForm();
+                    loadAnnouncements();
+                } else {
+                    alert("You do not have permission to view this page.");
+                    window.location.href = 'index.html'; 
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+/* admin.css */
+
+/* สไตล์สำหรับกล่องสถิติ */
+.stat-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-box {
+    flex-grow: 1;
+    flex-basis: 200px; /* ความกว้างขั้นต่ำ */
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.stat-box h4 {
+    margin: 0 0 0.5rem 0;
+    color: #495057;
+}
+
+.stat-box p {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+/* สไตล์สำหรับปุ่ม Quick Links */
+#quickLinks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    background-color: transparent; /* เอาพื้นหลังเทาออก */
+    border: none;
+    padding: 0;
+}
+
+#quickLinks button {
+    flex-grow: 1; /* ทำให้ปุ่มขยายเท่ากัน */
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-weight: 500;
+    /* (ใช้สไตล์ปุ่มจาก common.css) */
+}
+
+/* admin.css */
+
+/* ... (สไตล์ AddUserSection, H3, Form div, Label, Input, Button, Message เหมือนเดิม) ... */
+
+/* --- สไตล์ใหม่สำหรับฟอร์มที่แบ่งส่วน --- */
+#addUserForm {
+    display: flex;
+    flex-wrap: wrap; /* ทำให้ section ขึ้นบรรทัดใหม่ได้ */
+    gap: 1.5rem; /* ระยะห่างระหว่าง sections */
+}
+
+.form-section {
+    flex: 1; /* ให้แต่ละ section ขยายตัว */
+    min-width: 300px; /* ความกว้างขั้นต่ำของแต่ละ section */
+    border: 1px dashed #ccc;
+    padding: 1rem;
+    border-radius: 4px;
+}
+
+.form-section h4 {
+    margin-top: 0;
+    color: #007bff;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+}
+
+.form-submit-area {
+    width: 100%; /* ให้ส่วนปุ่มกว้างเต็ม */
+    text-align: left; /* จัดปุ่มชิดซ้าย (หรือ center) */
+    margin-left: 165px; /* (ถ้ายังใช้ Label Width + Margin) */
+}

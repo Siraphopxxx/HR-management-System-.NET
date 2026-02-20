@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Dashboard</title>
+    <link rel="stylesheet" href="common.css">
+    <link rel="stylesheet" href="admin.css">
+    
+    <style>
+        #announcementWidget {
+            background-color: #fffaf0; border: 1px solid #ffeeba; border-radius: 8px;
+            padding: 1.5rem; margin-bottom: 2rem;
+        }
+        #announcementWidget h2 { margin-top: 0; color: #856404; }
+        .announcement-item {
+            border-bottom: 1px solid #eee; padding: 1rem 0;
+        }
+        .announcement-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .announcement-item h4 { margin: 0 0 0.5rem 0; color: #333; }
+        .announcement-item small { color: #777; font-style: italic; }
+        .announcement-item p { margin: 0.5rem 0 0 0; white-space: pre-wrap; }
+        
+        #announcementList {
+            max-height: 120px; 
+            overflow-y: auto;  
+            padding-right: 1rem; 
+            border-top: 1px solid #ffeeba;
+            border-bottom: 1px solid #ffeeba;
+        }
+    </style>
+</head>
+<body class="admin-body"> 
+    <div id="app" class="role-page admin-page">
+        <header>
+            <h1>HR Dashboard</h1>
+            <div id="userInfoDisplay">Loading user info...</div>
+        </header>
+        <main>
+            
+            <div class="stat-container" id="statContainer">
+                <div class="stat-box"><h4>Total Employees</h4><p id="statEmployees">...</p></div>
+                <div class="stat-box"><h4>Total Users</h4><p id="statUsers">...</p></div>
+                <div class="stat-box"><h4>Total Departments</h4><p id="statDepts">...</p></div>
+                <div class="stat-box"><h4>Total Job Titles</h4><p id="statJobs">...</p></div>
+            </div>
+
+            <div id="announcementWidget">
+                <h2>Company Announcements</h2>
+                <div id="announcementList">
+                    <p>Loading announcements...</p>
+                </div>
+            </div>
+
+            <h2>HR Functions</h2>
+            <div class="function-placeholder" id="quickLinks">
+                <button onclick="window.location.href='manage_users.html'">Manage Users</button>
+                <button onclick="window.location.href='manage_departments.html'">Manage Departments</button>
+                <button onclick="window.location.href='manage_jobtitles.html'">Manage Job Titles</button>
+                
+                <button onclick="window.location.href='manage_leavetypes.html'" style="background-color: #ffc107; color: #333;">Manage Leave Types</button>
+                <button onclick="window.location.href='manage_leavequotas.html'" style="background-color: #ffc107; color: #333;">Manage Leave Quotas</button>
+                <button onclick="window.location.href='manage_publicholidays.html'" style="background-color: #ffc107; color: #333;">Manage Public Holidays</button>
+                
+                <button onclick="window.location.href='manage_announcements.html'" style="background-color: #17a2b8; color: white;">Manage Announcements</button>
+                <button onclick="window.location.href='manage_projects.html'" style="background-color: #6f42c1; color: white;">Manage Projects</button>
+                <button onclick="window.location.href='manage_payroll.html'" style="background-color: #28a745; color: white;">Manage Payroll</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="script-rolepages.js"></script>
+    <script>
+        // (*** นี่คือ "โค้ดฉบับเต็ม" ที่ผมเผลอลบไป ***)
+        
+        // (Helper function: แปลง Date)
+        function formatLocalDate(dateString, withTime = false) {
+            try {
+                const date = new Date(dateString);
+                const options = {
+                    year: 'numeric', month: 'long', day: 'numeric',
+                    timeZone: 'Asia/Bangkok'
+                };
+                if (withTime) {
+                    options.hour = '2-digit';
+                    options.minute = '2-digit';
+                }
+                return date.toLocaleString('th-TH', options);
+            } catch (e) { return dateString; }
+        }
+
+        // (ฟังก์ชันโหลดประกาศ)
+        async function loadAnnouncements() {
+            const container = document.getElementById('announcementList');
+            if (!container) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/Announcements`, { method: 'GET' });
+                if (!response.ok) throw new Error(`Failed to fetch announcements: ${response.status}`);
+                const announcements = await response.json();
+                container.innerHTML = ''; 
+                if (announcements.length === 0) {
+                    container.innerHTML = '<p>No announcements at this time.</p>';
+                    return;
+                }
+                announcements.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'announcement-item';
+                    div.innerHTML = `
+                        <h4>${item.title}</h4>
+                        <small>Posted on: ${formatLocalDate(item.postedDate, true)}</small>
+                        <p>${item.content}</p>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (error) {
+                console.error('Load Announcements Error:', error);
+                container.innerHTML = '<p style="color: red;">Error loading announcements.</p>';
+            }
+        }
+
+        // (ฟังก์ชันโหลด Stats)
+        async function loadDashboardStats() {
+            const statEmp = document.getElementById('statEmployees');
+            const statUsr = document.getElementById('statUsers');
+            const statDept = document.getElementById('statDepts');
+            const statJob = document.getElementById('statJobs');
+            const statContainer = document.getElementById('statContainer');
+            if (!statContainer) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/Dashboard/stats`, { method: 'GET' });
+                if (!response.ok) throw new Error(`Failed to fetch stats: ${response.status}`);
+                const stats = await response.json();
+                if (statEmp) statEmp.textContent = stats.employeeCount;
+                if (statUsr) statUsr.textContent = stats.userCount;
+                if (statDept) statDept.textContent = stats.departmentCount;
+                if (statJob) statJob.textContent = stats.jobTitleCount;
+            } catch (error) {
+                console.error("Error loading dashboard stats:", error);
+                if(statContainer) statContainer.innerHTML = "<p style='color: red;'>Could not load dashboard stats.</p>";
+            }
+        }
+        
+        // (ฟังก์ชันหลัก)
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentUser = checkAuthAndLoadUserInfo(); 
+            if (currentUser) {
+                if (currentUser.role === 'HR') { 
+                    // (*** ตอนนี้ "เรียก" ได้แล้ว เพราะฟังก์ชันอยู่ข้างบน ***)
+                    loadDashboardStats(); 
+                    loadAnnouncements(); 
+                } else {
+                    alert("Access Denied.");
+                    window.location.href = 'index.html';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

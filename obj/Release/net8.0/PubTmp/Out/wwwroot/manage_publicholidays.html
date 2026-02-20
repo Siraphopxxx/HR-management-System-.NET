@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Public Holidays</title>
+    <link rel="stylesheet" href="common.css">
+    <link rel="stylesheet" href="admin.css"> 
+</head>
+<body>
+    <div id="app" class="role-page admin-page"> 
+        <header>
+            <h1>Manage Public Holidays</h1>
+            <div id="userInfoDisplay">Loading user info...</div>
+        </header>
+        <main>
+<a href="#" id="backLink" class="back-link">&larr; Back to Dashboard</a>
+            <div id="addSection" class="function-placeholder" style="background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 1.5rem; width: 100%; box-sizing: border-box; text-align: left;">
+                <h3>Add New Holiday</h3>
+                <form id="addForm" style="display: flex; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <label for="newDate" style="width: 150px; margin-right: 15px;">Holiday Date:</label>
+                        <input type="date" id="newDate" required style="min-width: 200px; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label for="newName" style="width: 150px; margin-right: 15px;">Holiday Name:</label>
+                        <input type="text" id="newName" required style="min-width: 200px; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px;">
+                    </div>
+                    
+                    <button type="submit" style="margin-left: 165px; margin-top: 1rem; padding: 0.6rem 1.2rem; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Add Holiday</button>
+                </form>
+                <div id="addMessage" class="message"></div>
+            </div>
+
+            <hr style="margin: 2rem 0;">
+
+            <h2>Holiday List (Recent first)</h2>
+            <div class="function-placeholder" style="padding: 0; border: none; background: none;">
+                <table id="listTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Holiday Name</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listTbody">
+                        </tbody>
+                </table>
+                <div id="listMessage" class="message"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="script-rolepages.js"></script>
+    <script>
+        // --- โค้ดสำหรับหน้านี้โดยเฉพาะ ---
+        
+        // (Helper function: แปลง Date string (YYYY-MM-DD) เป็น Format ที่อ่านง่าย)
+        function formatLocalDate(dateString) {
+            try {
+                // ***** (จุดที่แก้ไข) *****
+                const date = new Date(dateString);
+                // (ลบ 2 บรรทัด 'offset' และ 'correctedDate' ที่ผิดทิ้งไป)
+                // `new Date()` จะจัดการ Timezone (UTC/Local) ให้เราอัตโนมัติ
+                
+                return date.toLocaleDateString('th-TH', {
+                // ***** (จบจุดที่แก้ไข) *****
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    timeZone: 'Asia/Bangkok' // (ระบุ Timezone ให้ชัดเจนไปเลย)
+                });
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        // 1. ฟังก์ชันโหลด Holiday List
+        async function loadHolidays() {
+            const tbody = document.getElementById('listTbody');
+            const messageDiv = document.getElementById('listMessage');
+            if (!tbody || !messageDiv) return;
+
+            tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+            showMessage('listMessage', '');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/PublicHolidays`, { method: 'GET' });
+                if (!response.ok) throw new Error(`Failed to fetch holidays: ${response.status}`);
+
+                const holidays = await response.json();
+                tbody.innerHTML = ''; 
+
+                if (holidays.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3">No public holidays found.</td></tr>';
+                    return;
+                }
+
+                holidays.forEach(h => {
+                    const tr = document.createElement('tr');
+                    
+                    const safeName = h.holidayName.replace(/'/g, "\\'");
+                    const dateForInput = h.holidayDate.split('T')[0]; 
+
+                    tr.innerHTML = `
+                        <td>${formatLocalDate(h.holidayDate)}</td> 
+                        <td>${h.holidayName}</td>
+                        <td class="actions-cell">
+                            <button class="btn-edit" onclick="editHoliday(${h.holidayId}, '${dateForInput}', '${safeName}')">Edit</button>
+                            <button class="btn-delete" onclick="deleteHoliday(${h.holidayId}, '${safeName}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (error) {
+                console.error('Load Holidays Error:', error);
+                showMessage('listMessage', error.message);
+                tbody.innerHTML = `<tr><td colspan="3" style="color: red;">Error loading holidays.</td></tr>`;
+            }
+        }
+
+        // 2. ฟังก์ชัน Add Holiday
+        function setupAddForm() {
+            const addForm = document.getElementById('addForm');
+            if (!addForm) return;
+
+            addForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                showMessage('addMessage', 'Adding holiday...');
+                
+                const writeModel = {
+                    holidayDate: document.getElementById('newDate').value,
+                    holidayName: document.getElementById('newName').value
+                };
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/PublicHolidays`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(writeModel)
+                    });
+
+                    if (!response.ok) {
+                        let errorMessage = `Error: ${response.status}`;
+                        try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+                        throw new Error(errorMessage);
+                    }
+
+                    const created = await response.json();
+                    showMessage('addMessage', `Holiday '${created.holidayName}' added successfully.`, true);
+                    addForm.reset();
+                    loadHolidays(); 
+                } catch (error) {
+                    console.error('Add Holiday Error:', error);
+                    showMessage('addMessage', error.message);
+                }
+            });
+        }
+
+        // 3. ฟังก์ชัน Delete Holiday
+        async function deleteHoliday(id, name) {
+            if (!confirm(`Are you sure you want to delete: ${name}?`)) {
+                return;
+            }
+            
+            showMessage('listMessage', `Deleting ${name}...`);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/PublicHolidays/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    let errorMessage = `Error: ${response.status}`;
+                    try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+                    throw new Error(errorMessage);
+                }
+
+                showMessage('listMessage', `Holiday '${name}' deleted successfully.`, true);
+                loadHolidays(); 
+
+            } catch (error) {
+                console.error('Delete Holiday Error:', error);
+                showMessage('listMessage', error.message);
+            }
+        }
+
+        // 4. ฟังก์ชัน Edit Holiday (แบบ Prompt ง่ายๆ)
+        async function editHoliday(id, oldDate, oldName) {
+            
+            const newDate = prompt("Enter new date (YYYY-MM-DD):", oldDate);
+            if (!newDate) return; 
+            
+            const newName = prompt("Enter new holiday name:", oldName);
+            if (!newName) return; 
+            
+            const writeModel = {
+                holidayDate: newDate,
+                holidayName: newName
+            };
+                
+            showMessage('listMessage', `Updating ${oldName}...`);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/PublicHolidays/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(writeModel)
+                });
+
+                if (!response.ok) {
+                    let errorMessage = `Error: ${response.status}`;
+                    try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+                    throw new Error(errorMessage);
+                }
+                
+                showMessage('listMessage', `Holiday '${newName}' updated successfully.`, true);
+                loadHolidays(); 
+                
+            } catch (error) {
+                 console.error('Update Holiday Error:', error);
+                 showMessage('listMessage', error.message);
+            }
+        }
+
+        // --- รันฟังก์ชันเมื่อหน้าเว็บโหลด ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentUser = checkAuthAndLoadUserInfo();
+            if (currentUser) {
+                if (currentUser.role === 'Admin'|| currentUser.role === 'HR') {
+                    if (currentUser.role === 'Admin') {
+                        document.getElementById('backLink').href = 'admin.html';
+                    } else {
+                        document.getElementById('backLink').href = 'hr.html';
+                    }
+                    setupAddForm();
+                    loadHolidays();
+                } else {
+                    alert("You do not have permission to view this page.");
+                    window.location.href = 'index.html'; 
+                }
+            }
+        });
+    </script>
+</body>
+</html>

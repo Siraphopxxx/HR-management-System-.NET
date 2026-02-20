@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Users - Admin</title>
+    <link rel="stylesheet" href="common.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-body"> <div id="app" class="role-page admin-page">
+        <header>
+            <h1>Manage Users</h1>
+            <div id="userInfoDisplay">Loading user info...</div>
+        </header>
+        <main>
+            <a href="#" id="backLink" class="back-link">&larr; Back to Dashboard</a>
+            <div id="addUserSection" style="display: none;"> <h3>Add New User</h3>
+                <form id="addUserForm">
+                    <div class="form-section">
+                        <h4>Login & Role</h4>
+                        <div><label>Name (Username):</label> <input type="text" id="newUserName" required></div>
+                        <div><label>Password:</label> <input type="password" id="newUserPassword" required minlength="1"></div>
+                        <div>
+                            <label>Role:</label>
+                            <select id="newUserRole" required>
+                                <option value="" disabled selected>-- Select Role --</option>
+                                <option value="Admin">Admin</option>
+                                <option value="HR">HR</option>
+                                <option value="Manager">Manager</option>
+                                <option value="Employee">Employee</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h4>Employee Info</h4>
+                        <div><label>Employee Number:</label> <input type="text" id="newEmployeeNumber" required></div>
+                        <div><label>First Name:</label> <input type="text" id="newUserFirstName" required></div>
+                        <div><label>Last Name:</label> <input type="text" id="newUserLastName" required></div>
+                        <div>
+                            <label>Department:</label>
+                            <select id="newUserDepartment">
+                                <option value="" disabled selected>-- Loading Depts --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Job Title:</label>
+                            <select id="newUserJobTitle">
+                                <option value="" disabled selected>-- Loading Jobs --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Manager (Supervisor):</label>
+                            <select id="newUserManager">
+                                <option value="" selected>-- No Manager --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Details (Optional)</h4>
+                        <div><label>Date of Birth:</label> <input type="date" id="newDateOfBirth"></label></div>
+                        <div><label>Gender:</label> 
+                            <select id="newGender">
+                                <option value="">-- Select --</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div><label>Email:</label> <input type="email" id="newEmail"></label></div>
+                        <div><label>Phone Number:</label> <input type="tel" id="newPhoneNumber"></label></div>
+                        <div><label>Salary (Current):</label> <input type="number" step="0.01" id="newUserSalary"></label></div>
+                    </div>
+                    
+                    <div class="form-section">
+                         <h4>Address (Optional)</h4>
+                        <div><label>Address (Street):</label> <input type="text" id="newAddressStreet"></label></div>
+                        <div><label>Address (City):</label> <input type="text" id="newAddressCity"></label></div>
+                        <div><label>Address (State):</label> <input type="text" id="newAddressState"></label></div>
+                        <div><label>Address (Postal):</label> <input type="text" id="newAddressPostal"></label></div>
+                        <div><label>Address (Country):</label> <input type="text" id="newAddressCountry"></label></div>
+                    </div>
+
+                    <div class="form-submit-area">
+                        <button type="submit">Add User</button>
+                        <div id="addUserMessage" class="message"></div>
+                    </div>
+                </form>
+            </div>
+
+            <hr style="margin: 2rem 0;">
+
+            <h2>User List</h2>
+            <div class="function-placeholder" style="padding: 0; border: none; background: none;">
+                <table id="userListTable">
+                    <thead>
+                        <tr>
+                            <th>Emp. Number</th>
+                            <th>Full Name</th>
+                            <th>Department</th>
+                            <th>Position</th>
+                            <th>Role</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userListTbody">
+                        </tbody>
+                </table>
+                <div id="userListMessage" class="message"></div>
+            </div>
+
+            <div id="editUserModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit User</h3>
+                <button class="modal-close-btn" onclick="closeEditModal()">&times;</button>
+            </div>
+            
+            <form id="editUserForm">
+                <input type="hidden" id="editEmployeeNumber"> 
+                
+                <div class="form-section">
+                    <h4>Login & Role</h4>
+                    <div><label>Name (Username):</label> <input type="text" id="editUserName" required></div>
+                    <div><label>Password:</label> <input type="password" id="editUserPassword" placeholder="(Leave blank to keep unchanged)"></div>
+                    <div>
+                        <label>Role:</label>
+                        <select id="editUserRole" required>
+                            <option value="Admin">Admin</option>
+                            <option value="HR">HR</option>
+                            <option value="Manager">Manager</option>
+                            <option value="Employee">Employee</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h4>Employee Info</h4>
+                    <div><label>Employee Number:</label> <input type="text" id="editEmployeeNumberDisplay" disabled></div> <div><label>First Name:</label> <input type="text" id="editUserFirstName" required></div>
+                    <div><label>Last Name:</label> <input type="text" id="editUserLastName" required></div>
+                    <div>
+                        <label>Department:</label>
+                        <select id="editUserDepartment">
+                            <option value="" disabled selected>-- Loading Depts --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Job Title:</label>
+                        <select id="editUserJobTitle">
+                            <option value="" disabled selected>-- Loading Jobs --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Manager (Supervisor):</label>
+                        <select id="editUserSupervisor">
+                            <option value="" selected>-- No Manager --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Details (Optional)</h4>
+                    <div><label>Date of Birth:</label> <input type="date" id="editDateOfBirth"></label></div>
+                    <div><label>Gender:</label> 
+                        <select id="editGender">
+                            <option value="">-- Select --</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div><label>Email:</label> <input type="email" id="editEmail"></label></div>
+                    <div><label>Phone Number:</label> <input type="tel" id="editPhoneNumber"></label></div>
+                    <div><label>Salary (Current):</label> <input type="number" step="0.01" id="editUserSalary"></label></div>
+                </div>
+
+                <div class="form-section">
+                     <h4>Address (Optional)</h4>
+                    <div><label>Address (Street):</label> <input type="text" id="editAddressStreet"></label></div>
+                    <div><label>Address (City):</label> <input type="text" id="editAddressCity"></label></div>
+                    <div><label>Address (State):</label> <input type="text" id="editAddressState"></label></div>
+                    <div><label>Address (Postal):</label> <input type="text" id="editAddressPostal"></label></div>
+                    <div><label>Address (Country):</label> <input type="text" id="editAddressCountry"></label></div>
+                </div>
+                
+                <div class="form-submit-area">
+                    <button type="submit">Save Changes</button>
+                    <div id="editUserMessage" class="message"></div>
+                </div>
+        </form>
+        </div>
+        </div>
+        </main>
+
+    </div>
+
+    <script src="script-rolepages.js"></script>
+    <script>
+        // --- โค้ดสำหรับหน้านี้โดยเฉพาะ ---
+
+// (API_BASE_URL ถูกกำหนดไว้ใน script-rolepages.js แล้ว)
+
+// --- ตัวแปรสำหรับ Modal (เข้าถึงง่าย) ---
+const editModal = document.getElementById('editUserModal');
+const editForm = document.getElementById('editUserForm');
+let currentEditingEmployeeNumber = null; // << ตัวแปรสำคัญ: เก็บว่ากำลังแก้ใคร
+
+// --- 1. ฟังก์ชัน: แสดง/ซ่อน Modal ---
+function openEditModal() {
+    if (editModal) editModal.classList.add('show');
+}
+function closeEditModal() {
+    if (editModal) editModal.classList.remove('show');
+    currentEditingEmployeeNumber = null; // เคลียร์ค่า
+    if (editForm) editForm.reset(); // รีเซ็ตฟอร์ม
+    showMessage('editUserMessage', ''); // เคลียร์ข้อความ
+}
+
+// --- 2. ฟังก์ชัน: โหลด User List (แก้ไข: เปลี่ยน onclick) ---
+async function loadUsersList() {
+    const tbody = document.getElementById('userListTbody');
+    const messageDiv = document.getElementById('userListMessage');
+    if (!tbody || !messageDiv) return;
+
+    tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+    showMessage('userListMessage', '');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/Users`, { method: 'GET' });
+        if (!response.ok) throw new Error(`Failed to fetch users: ${response.status}`);
+
+        const users = await response.json();
+        tbody.innerHTML = ''; 
+
+        if (users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6">No users found.</td></tr>';
+            return;
+        }
+
+        users.forEach(user => {
+            const tr = document.createElement('tr');
+            // *** (แก้ไข onclick เป็น openEditForm) ***
+            tr.innerHTML = `
+                <td>${user.employeeNumber}</td>
+                <td>${user.fullName}</td>
+                <td>${user.department}</td>
+                <td>${user.position}</td>
+                <td>${user.role}</td>
+                <td class="actions-cell">
+                    <button class="btn-edit" onclick="openEditForm('${user.employeeNumber}')">Edit</button>
+                    <button class="btn-delete" onclick="deleteUser('${user.employeeNumber}')">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error('Load Users Error:', error);
+        showMessage('userListMessage', error.message);
+        tbody.innerHTML = `<tr><td colspan="6" style="color: red;">Error loading users.</td></tr>`;
+    }
+}
+
+// --- 3. ฟังก์ชัน: ลบ User (เหมือนเดิม) ---
+async function deleteUser(employeeNumber) {
+    if (!confirm(`Are you sure you want to delete user: ${employeeNumber}?`)) {
+        return;
+    }
+    
+    if (employeeNumber === 'ADMIN-001') { 
+        alert("Cannot delete the root Admin user.");
+        return;
+    }
+
+    const messageDiv = document.getElementById('userListMessage');
+    showMessage('userListMessage', `Deleting user ${employeeNumber}...`);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/Users/${employeeNumber}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            let errorMessage = `Error: ${response.status}`;
+            try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+            throw new Error(errorMessage);
+        }
+
+        showMessage('userListMessage', `User ${employeeNumber} deleted successfully.`, true);
+        loadUsersList(); // โหลดตารางใหม่
+        // โหลด Dropdown ใหม่ (เผื่อ Manager ที่เราเพิ่งลบไป)
+        loadMasterDataForDropdowns('newUserDepartment', 'newUserJobTitle', 'newUserManager'); 
+        loadMasterDataForDropdowns('editUserDepartment', 'editUserJobTitle', 'editUserSupervisor');
+    } catch (error) {
+        console.error('Delete User Error:', error);
+        showMessage('userListMessage', error.message);
+    }
+}
+
+// --- 4. ฟังก์ชัน: เปิดฟอร์ม Edit (*** นี่คือส่วนที่ทำใหม่ ***) ---
+async function openEditForm(employeeNumber) {
+    showMessage('editUserMessage', 'Loading user data...');
+    currentEditingEmployeeNumber = employeeNumber; // <<< เก็บ ID ที่จะแก้
+    
+    // 1. โหลด Dropdowns (เราโหลดไว้แล้ว แต่เผื่อไว้)
+    await loadMasterDataForDropdowns('editUserDepartment', 'editUserJobTitle', 'editUserSupervisor');
+
+    // 2. เรียก BE เพื่อดึงข้อมูล User คนนั้น
+    try {
+        const response = await fetch(`${API_BASE_URL}/Users/${employeeNumber}`, { method: 'GET' });
+        if (!response.ok) throw new Error(`Failed to fetch user data: ${response.status}`);
+        
+        const user = await response.json();
+
+        // 3. เติมข้อมูล (Populate) ลงในฟอร์ม Modal
+        // (เราใช้ EmployeeNumber จาก "currentEditingEmployeeNumber" ที่เราเก็บไว้)
+        document.getElementById('editEmployeeNumberDisplay').value = user.employeeNumber;
+        
+        // (ส่วน Login)
+        document.getElementById('editUserName').value = user.username;
+        document.getElementById('editUserPassword').value = ''; // <<< **สำคัญ:** เว้นว่างไว้เสมอ
+        // (หมายเหตุ: ถ้าคุณ *อยาก* ให้มันโชว์ Password (ซึ่งไม่แนะนำ)
+        // ให้เปลี่ยนบรรทัดบนเป็น: document.getElementById('editUserPassword').value = user.password;
+        
+        document.getElementById('editUserRole').value = user.role;
+        
+        // (ส่วน Employee)
+        document.getElementById('editUserFirstName').value = user.firstName;
+        document.getElementById('editUserLastName').value = user.lastName;
+        document.getElementById('editUserDepartment').value = user.departmentId;
+        document.getElementById('editUserJobTitle').value = user.jobTitleId;
+        document.getElementById('editUserSupervisor').value = user.managerId;
+        
+        // (ส่วน Details)
+        if (user.dateOfBirth) {
+            document.getElementById('editDateOfBirth').value = user.dateOfBirth.split('T')[0];
+        }
+        document.getElementById('editGender').value = user.gender;
+        document.getElementById('editEmail').value = user.email;
+        document.getElementById('editPhoneNumber').value = user.phoneNumber;
+        document.getElementById('editUserSalary').value = user.currentSalary;
+        
+        // (ส่วน Address)
+        document.getElementById('editAddressStreet').value = user.address_Street;
+        document.getElementById('editAddressCity').value = user.address_City;
+        document.getElementById('editAddressState').value = user.address_State;
+        document.getElementById('editAddressPostal').value = user.address_PostalCode;
+        document.getElementById('editAddressCountry').value = user.address_Country;
+
+        showMessage('editUserMessage', '');
+        openEditModal(); // <<< เปิด Modal
+
+    } catch (error) {
+        console.error('Error opening edit form:', error);
+        showMessage('userListMessage', `Error: ${error.message}`); // แสดง Error ที่ตารางหลัก
+    }
+}
+
+// --- 5. ฟังก์ชัน: Submit ฟอร์ม Edit (*** นี่คือส่วนที่ทำใหม่ ***) ---
+async function handleEditFormSubmit(event) {
+    event.preventDefault();
+    if (!currentEditingEmployeeNumber) return; 
+
+    showMessage('editUserMessage', 'Saving changes...');
+    
+    // รวบรวมข้อมูลจากฟอร์ม Edit
+    const updatedUser = {
+        // AppUsers
+        name: document.getElementById('editUserName').value,
+        password: document.getElementById('editUserPassword').value, // <<< ส่งค่าไป (ถ้าว่าง BE จะไม่แก้)
+        role: document.getElementById('editUserRole').value,
+        
+        // Employees
+        employeeNumber: currentEditingEmployeeNumber, // (อันนี้ BE ไม่ใช้ แต่เราใช้ EmployeeNumber ใน URL)
+        firstName: document.getElementById('editUserFirstName').value,
+        lastName: document.getElementById('editUserLastName').value,
+
+        dateOfBirth: document.getElementById('editDateOfBirth').value || null,
+        gender: document.getElementById('editGender').value || null,
+        email: document.getElementById('editEmail').value || null,
+        phoneNumber: document.getElementById('editPhoneNumber').value || null,
+
+        address_Street: document.getElementById('editAddressStreet').value || null,
+        address_City: document.getElementById('editAddressCity').value || null,
+        address_State: document.getElementById('editAddressState').value || null,
+        address_PostalCode: document.getElementById('editAddressPostal').value || null,
+        address_Country: document.getElementById('editAddressCountry').value || null,
+
+        departmentId: parseInt(document.getElementById('editUserDepartment').value) || null,
+        jobTitleId: parseInt(document.getElementById('editUserJobTitle').value) || null,
+        managerId: parseInt(document.getElementById('editUserSupervisor').value) || null,
+        currentSalary: parseFloat(document.getElementById('editUserSalary').value) || null
+    };
+
+    try {
+        // เรียก PUT (นี่คือส่วนที่เชื่อมกับ BE)
+        const response = await fetch(`${API_BASE_URL}/Users/${currentEditingEmployeeNumber}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedUser)
+        });
+
+        if (!response.ok) {
+            let errorMessage = `Error: ${response.status}`;
+            try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+            throw new Error(errorMessage);
+        }
+
+        const result = await response.json();
+        showMessage('editUserMessage', result.message, true); // แสดง Success ใน Modal
+        
+        // หน่วงเวลาเล็กน้อยให้ User อ่าน Success
+        setTimeout(() => {
+            closeEditModal();
+            loadUsersList(); // <<< โหลดตารางหลักใหม่
+            // โหลด Dropdown ใหม่ (เผื่อเราแก้ Role ของ Manager)
+            loadMasterDataForDropdowns('newUserDepartment', 'newUserJobTitle', 'newUserManager');
+            loadMasterDataForDropdowns('editUserDepartment', 'editUserJobTitle', 'editUserSupervisor');
+        }, 1500);
+
+    } catch (error) {
+        console.error('Update User Error:', error);
+        showMessage('editUserMessage', error.message); // แสดง Error ใน Modal
+    }
+}
+
+// --- 6. ฟังก์ชัน: Add User (โค้ดเดิมของคุณ) ---
+function setupAdminAddUserForm(currentUser) {
+    const addUserForm = document.getElementById('addUserForm');
+    const messageDiv = document.getElementById('addUserMessage');
+    const addUserSection = document.getElementById('addUserSection');
+    
+    if (!addUserForm || !messageDiv || !addUserSection || currentUser.role !== 'Admin') return;
+    
+    addUserSection.style.display = 'block'; // สั่งให้ฟอร์มแสดง
+
+    addUserForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        showMessage('addUserMessage', 'Adding user...');
+
+        const newUser = {
+            name: document.getElementById('newUserName').value,
+            password: document.getElementById('newUserPassword').value,
+            role: document.getElementById('newUserRole').value,
+            employeeNumber: document.getElementById('newEmployeeNumber').value,
+            firstName: document.getElementById('newUserFirstName').value,
+            lastName: document.getElementById('newUserLastName').value,
+            dateOfBirth: document.getElementById('newDateOfBirth').value || null,
+            gender: document.getElementById('newGender').value || null,
+            email: document.getElementById('newEmail').value || null,
+            phoneNumber: document.getElementById('newPhoneNumber').value || null,
+            address_Street: document.getElementById('newAddressStreet').value || null,
+            address_City: document.getElementById('newAddressCity').value || null,
+            address_State: document.getElementById('newAddressState').value || null,
+            address_PostalCode: document.getElementById('newAddressPostal').value || null,
+            address_Country: document.getElementById('newAddressCountry').value || null,
+            departmentId: parseInt(document.getElementById('newUserDepartment').value) || null,
+            jobTitleId: parseInt(document.getElementById('newUserJobTitle').value) || null,
+            managerId: parseInt(document.getElementById('newUserManager').value) || null,
+            currentSalary: parseFloat(document.getElementById('newUserSalary').value) || null
+        };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/Users`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newUser)
+            });
+
+            if (!response.ok) {
+                let errorMessage = `Error: ${response.status}`;
+                try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+                throw new Error(errorMessage);
+            }
+
+            const createdUserResponse = await response.json();
+            showMessage('addUserMessage', createdUserResponse.message, true);
+            addUserForm.reset();
+            loadUsersList(); // โหลดตารางใหม่
+            loadMasterDataForDropdowns('newUserDepartment', 'newUserJobTitle', 'newUserManager'); 
+            loadMasterDataForDropdowns('editUserDepartment', 'editUserJobTitle', 'editUserSupervisor');
+        } catch (error) {
+            console.error('Add User Error:', error);
+            showMessage('addUserMessage', error.message);
+        }
+    });
+}
+
+// --- 7. รันฟังก์ชันเมื่อหน้าเว็บโหลด (*** แก้ไขใหม่ ***) ---
+document.addEventListener('DOMContentLoaded', () => {
+    const currentUser = checkAuthAndLoadUserInfo();
+    if (currentUser) {
+        if (currentUser.role === 'Admin'|| currentUser.role === 'HR') {
+
+            if (currentUser.role === 'Admin') {
+                document.getElementById('backLink').href = 'admin.html';
+            } else {
+                document.getElementById('backLink').href = 'hr.html';
+            }
+
+             
+
+            // 1. Setup ฟอร์ม Add
+            setupAdminAddUserForm(currentUser);
+            
+            // 2. โหลด Dropdowns (ทั้งฟอร์ม Add และ Edit)
+            loadMasterDataForDropdowns('newUserDepartment', 'newUserJobTitle', 'newUserManager');
+            loadMasterDataForDropdowns('editUserDepartment', 'editUserJobTitle', 'editUserSupervisor');
+
+            // 3. โหลดตาราง User
+            loadUsersList();
+
+            // 4. (สำคัญ!) ผูก Event ให้ฟอร์ม Edit
+            if (editForm) {
+                editForm.addEventListener('submit', handleEditFormSubmit);
+            }
+            // (ปุ่ม Close Modal เราใช้ onclick="closeEditModal()" ใน HTML แล้ว)
+
+        } else {
+            alert("You do not have permission to view this page.");
+            window.location.href = 'index.html'; 
+        }
+    }
+});
+    </script>
+</body>
+</html>

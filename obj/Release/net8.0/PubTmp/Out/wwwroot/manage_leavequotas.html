@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Leave Quotas</title>
+    <link rel="stylesheet" href="common.css">
+    <link rel="stylesheet" href="admin.css"> 
+</head>
+<body>
+    <div id="app" class="role-page admin-page"> 
+        <header>
+            <h1>Manage Leave Quotas</h1>
+            <div id="userInfoDisplay">Loading user info...</div>
+        </header>
+        <main>
+<a href="#" id="backLink" class="back-link">&larr; Back to Dashboard</a>
+            <div id="addSection" class="function-placeholder" style="background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 1.5rem; width: 100%; box-sizing: border-box; text-align: left;">
+                <h3>Add New Quota</h3>
+                <form id="addForm" style="display: flex; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <label for="newLeaveType" style="width: 150px; margin-right: 15px;">Leave Type:</label>
+                        <select id="newLeaveType" required style="min-width: 200px; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px;">
+                            <option value="" disabled selected>-- Loading Leave Types --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="newDays" style="width: 150px; margin-right: 15px;">Default Days/Year:</label>
+                        <input type="number" id="newDays" min="0" max="365" required style="min-width: 200px; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px;">
+                    </div>
+                    
+                    <button type="submit" style="margin-left: 165px; margin-top: 1rem; padding: 0.6rem 1.2rem; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Add Quota</button>
+                </form>
+                <div id="addMessage" class="message"></div>
+            </div>
+
+            <hr style="margin: 2rem 0;">
+
+            <h2>Quota List</h2>
+            <div class="function-placeholder" style="padding: 0; border: none; background: none;">
+                <table id="listTable">
+                    <thead>
+                        <tr>
+                            <th>Leave Type</th>
+                            <th>Default Days</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listTbody">
+                        </tbody>
+                </table>
+                <div id="listMessage" class="message"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="script-rolepages.js"></script>
+    <script>
+        // --- โค้ดสำหรับหน้านี้โดยเฉพาะ ---
+
+        // 1. ฟังก์ชันโหลด Dropdown (เฉพาะ Leave Types)
+        async function loadLeaveTypesDropdown() {
+            const select = document.getElementById('newLeaveType');
+            if (!select) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/LeaveTypes`, { method: 'GET' });
+                if (!response.ok) throw new Error('Failed to load leave types');
+                
+                const leaveTypes = await response.json();
+                
+                select.innerHTML = '<option value="" disabled selected>-- Select Leave Type --</option>';
+                leaveTypes.forEach(lt => {
+                    const option = document.createElement('option');
+                    option.value = lt.leaveTypeId;
+                    option.textContent = `${lt.leaveTypeName} (${lt.isPaid ? 'Paid' : 'Unpaid'})`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error(error);
+                select.innerHTML = '<option value="">Error loading types</option>';
+            }
+        }
+
+        // 2. ฟังก์ชันโหลด Quota List
+        async function loadQuotas() {
+            const tbody = document.getElementById('listTbody');
+            const messageDiv = document.getElementById('listMessage');
+            if (!tbody || !messageDiv) return;
+
+            tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+            showMessage('listMessage', '');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/LeaveQuotas`, { method: 'GET' });
+                if (!response.ok) throw new Error(`Failed to fetch quotas: ${response.status}`);
+
+                const quotas = await response.json();
+                tbody.innerHTML = ''; 
+
+                if (quotas.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3">No quotas found.</td></tr>';
+                    return;
+                }
+
+                quotas.forEach(q => {
+                    const tr = document.createElement('tr');
+                    
+                    // (JS ต้อง Escape single quotes ในชื่อ)
+                    const safeName = q.leaveTypeName.replace(/'/g, "\\'");
+
+                    tr.innerHTML = `
+                        <td>${q.leaveTypeName} (ID: ${q.leaveTypeId})</td>
+                        <td>${q.defaultDays} days</td>
+                        <td class="actions-cell">
+                            <button class="btn-edit" onclick="editQuota(${q.leaveQuotaId}, ${q.leaveTypeId}, '${safeName}', ${q.defaultDays})">Edit</button>
+                            <button class="btn-delete" onclick="deleteQuota(${q.leaveQuotaId}, '${safeName}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (error) {
+                console.error('Load Quotas Error:', error);
+                showMessage('listMessage', error.message);
+                tbody.innerHTML = `<tr><td colspan="3" style="color: red;">Error loading quotas.</td></tr>`;
+            }
+        }
+
+        // 3. ฟังก์ชัน Add Quota
+        function setupAddForm() {
+            const addForm = document.getElementById('addForm');
+            if (!addForm) return;
+
+            addForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                showMessage('addMessage', 'Adding quota...');
+                
+                const writeModel = {
+                    leaveTypeId: parseInt(document.getElementById('newLeaveType').value),
+                    defaultDays: parseInt(document.getElementById('newDays').value)
+                };
+                
+                if (!writeModel.leaveTypeId) {
+                     showMessage('addMessage', 'Please select a leave type.');
+                     return;
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/LeaveQuotas`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(writeModel)
+                    });
+
+                    if (!response.ok) {
+                        let errorMessage = `Error: ${response.status}`;
+                        try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+                        throw new Error(errorMessage);
+                    }
+
+                    const created = await response.json();
+                    showMessage('addMessage', `Quota for '${created.leaveTypeName}' added successfully.`, true);
+                    addForm.reset();
+                    loadQuotas(); // โหลดตารางใหม่
+                } catch (error) {
+                    console.error('Add Quota Error:', error);
+                    showMessage('addMessage', error.message);
+                }
+            });
+        }
+
+        // 4. ฟังก์ชัน Delete Quota
+        async function deleteQuota(id, name) {
+            if (!confirm(`Are you sure you want to delete the quota for: ${name}?`)) {
+                return;
+            }
+            
+            showMessage('listMessage', `Deleting quota ${id}...`);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/LeaveQuotas/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    let errorMessage = `Error: ${response.status}`;
+                    try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+                    throw new Error(errorMessage);
+                }
+
+                showMessage('listMessage', `Quota for ${name} deleted successfully.`, true);
+                loadQuotas(); // โหลดตารางใหม่
+
+            } catch (error) {
+                console.error('Delete Quota Error:', error);
+                showMessage('listMessage', error.message);
+            }
+        }
+
+        // 5. ฟังก์ชัน Edit Quota (แบบ Prompt ง่ายๆ)
+        async function editQuota(quotaId, leaveTypeId, name, oldDays) {
+            
+            const newDaysInput = prompt(`Enter new default days for: ${name}`, oldDays);
+            
+            if (newDaysInput === null) return; // ถ้ากด Cancel
+            
+            const newDays = parseInt(newDaysInput);
+            if (isNaN(newDays) || newDays < 0 || newDays > 365) {
+                alert("Invalid days. Please enter a number between 0 and 365.");
+                return;
+            }
+
+            const writeModel = {
+                leaveTypeId: leaveTypeId, // (BE ต้องการ LeaveTypeId ใน Model)
+                defaultDays: newDays
+            };
+                
+            showMessage('listMessage', `Updating ${name}...`);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/LeaveQuotas/${quotaId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(writeModel)
+                });
+
+                if (!response.ok) {
+                    let errorMessage = `Error: ${response.status}`;
+                    try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+                    throw new Error(errorMessage);
+                }
+                
+                showMessage('listMessage', `Quota for ${name} updated to ${newDays} days.`, true);
+                loadQuotas(); // โหลดตารางใหม่
+                
+            } catch (error) {
+                 console.error('Update Quota Error:', error);
+                 showMessage('listMessage', error.message);
+            }
+        }
+
+        // --- รันฟังก์ชันเมื่อหน้าเว็บโหลด ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentUser = checkAuthAndLoadUserInfo();
+            if (currentUser) {
+                if (currentUser.role === 'Admin'|| currentUser.role === 'HR') {
+                    if (currentUser.role === 'Admin') {
+                        document.getElementById('backLink').href = 'admin.html';
+                    } else {
+                        document.getElementById('backLink').href = 'hr.html';
+                    }
+                    setupAddForm();
+                    loadLeaveTypesDropdown(); // << โหลด Dropdown
+                    loadQuotas(); // << โหลดตาราง
+                } else {
+                    alert("You do not have permission to view this page.");
+                    window.location.href = 'index.html'; 
+                }
+            }
+        });
+    </script>
+</body>
+</html>

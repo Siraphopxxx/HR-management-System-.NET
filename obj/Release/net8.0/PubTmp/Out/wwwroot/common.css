@@ -1,0 +1,252 @@
+/* common.css */
+body {
+    font-family: sans-serif;
+    margin: 0;
+    background-color: #f4f4f4;
+    color: #333;
+    display: flex; /* จัด #app กลางหน้าจอ */
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* common.css */
+/* ... (other styles) ... */
+
+#app {
+    max-width: 1200px; /* <<< ลองเพิ่มค่านี้ (เช่น 1200px หรือ 1400px) */
+    margin: 2rem auto; /* ให้ margin auto จัดกลาง */
+    padding: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    position: relative;
+    min-height: 150px;
+    width: 95%; /* <<< อาจจะปรับ width ให้เกือบเต็มด้วย */
+    box-sizing: border-box; /* <<< เพิ่มอันนี้เผื่อ padding */
+}
+
+/* ... (other styles) ... */
+
+/* --- สไตล์ Header และ User Info ที่ใช้ร่วมกันทุกหน้า Role --- */
+.role-page header {
+    border-bottom: 1px solid #eee;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.role-page header h1 {
+    margin: 0;
+}
+
+#userInfoDisplay {
+    font-size: 0.9em;
+    color: #555;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+#userInfoDisplay p {
+    margin: 0;
+    white-space: nowrap;
+}
+
+#userInfoDisplay button#logoutButton {
+    padding: 0.3em 0.8em;
+    font-size: 0.8em;
+    margin-top: 0;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+#userInfoDisplay button#logoutButton:hover {
+     background-color: #5a6268;
+}
+/* --- จบสไตล์ Header / User Info --- */
+
+/* สไตล์ Main content ทั่วไป */
+.role-page main h2 {
+    color: #0056b3;
+}
+
+.function-placeholder {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    border: 1px dashed #ced4da;
+}
+.function-placeholder button {
+     margin-right: 0.5rem;
+     margin-top: 0.5rem;
+     padding: 0.5rem 1rem;
+     cursor: pointer;
+     background-color: #17a2b8; /* สีปุ่มฟังก์ชันตัวอย่าง */
+     color: white;
+     border: none;
+     border-radius: 4px;
+}
+.function-placeholder button:hover {
+      background-color: #138496;
+}
+
+/* สไตล์ Message ทั่วไป (เผื่อใช้ในหน้า Role อื่น) */
+.message {
+    margin-top: 1rem;
+    min-height: 1.2em;
+    color: #dc3545; /* Error color */
+    text-align: left; /* เปลี่ยนเป็นชิดซ้าย */
+}
+.message.success {
+    color: #28a745; /* Success color */
+}
+
+
+
+
+
+
+
+
+/* ... (CSS อื่นๆ เหมือนเดิม) ... */
+
+/* --- สไตล์ตารางทั่วไป (สำหรับ Department List) --- */
+table {
+    width: 100%;
+    border-collapse: collapse; /* ทำให้เส้นขอบตารางติดกัน */
+    margin-top: 1rem;
+}
+
+table th, table td {
+    border: 1px solid #dee2e6;
+    padding: 0.75rem;
+    text-align: left;
+    vertical-align: middle;
+}
+
+table thead th {
+    background-color: #f8f9fa; /* สีพื้นหลังหัวตาราง */
+    font-weight: 600;
+}
+
+table tbody tr:nth-child(odd) {
+    background-color: #fdfdfd; /* (Optional) สลับสีแถว */
+}
+
+.actions-cell {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.actions-cell button {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8em;
+    margin: 0 0.2rem;
+    cursor: pointer;
+    border-radius: 4px;
+    border: none;
+    color: white;
+}
+
+.btn-edit {
+    background-color: #ffc107; /* สีเหลือง */
+}
+.btn-edit:hover {
+    background-color: #e0a800;
+}
+
+.btn-delete {
+    background-color: #dc3545; /* สีแดง */
+}
+.btn-delete:hover {
+    background-color: #c82333;
+}
+
+/* ลิงก์กลับ (Back Link) */
+a.back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+}
+a.back-link:hover {
+    text-decoration: underline;
+}
+
+
+
+/* ... (CSS อื่นๆ ทั้งหมดเหมือนเดิม) ... */
+
+
+/* --- (ใหม่) CSS สำหรับ Edit Modal --- */
+.modal-overlay {
+    display: none; /* ซ่อนไว้ก่อน */
+    position: fixed; /* อยู่ทับทุกอย่าง */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* พื้นหลังมัวๆ */
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+}
+.modal-overlay.show {
+    display: flex; /* แสดง Modal */
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 800px; /* จำกัดความกว้าง Modal */
+    max-height: 90vh; /* จำกัดความสูง */
+    overflow-y: auto; /* ให้ Scroll ได้ถ้าเนื้อหาล้น */
+    position: relative; /* สำหรับปุ่มปิด */
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+.modal-header h3 {
+    margin: 0;
+    color: #007bff;
+}
+.modal-close-btn {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #aaa;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+.modal-close-btn:hover {
+    color: #000;
+}
+
+/* (เราจะใช้ .form-section และ สไตล์ฟอร์มเดิมใน Modal) */
+#editUserForm {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
+#editUserMessage {
+     margin-left: 165px; /* (ปรับตาม CSS ใน admin.css) */
+     margin-top: 0.5rem;
+}
+/* --- จบ CSS Modal --- */

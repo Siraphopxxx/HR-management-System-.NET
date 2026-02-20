@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Managed Projects</title>
+    <link rel="stylesheet" href="common.css">
+    <link rel="stylesheet" href="admin.css"> 
+</head>
+<body>
+    <div id="app" class.role-page manager-page> 
+        <header>
+            <h1>My Managed Projects</h1>
+            <div id="userInfoDisplay">Loading user info...</div>
+        </header>
+        <main>
+            <a href="manager.html" class="back-link">&larr; Back to Dashboard</a>
+
+            <h2>Projects I Manage</h2>
+            <div class="function-placeholder" style="padding: 0; border: none; background: none;">
+                <table id="listTable">
+                    <thead>
+                        <tr>
+                            <th>Project Name</th>
+                            <th>Status</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listTbody">
+                        </tbody>
+                </table>
+                <div id="listMessage" class="message"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="script-rolepages.js"></script>
+    <script>
+        // (Helper function - เหมือนเดิม)
+        function formatLocalDate(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('th-TH', {
+                    year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok'
+                });
+            } catch (e) { return 'N/A'; }
+        }
+
+        // 1. ฟังก์ชันโหลด "โปรเจกต์ที่ฉันคุม" (*** อัปเกรด: เปลี่ยนปุ่ม ***)
+        async function loadMyManagedProjects(pmEmployeeId) {
+            const tbody = document.getElementById('listTbody');
+            const messageDiv = document.getElementById('listMessage');
+            if (!tbody || !messageDiv) return;
+
+            tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+            showMessage('listMessage', '');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/projects/managed-by/${pmEmployeeId}`, { method: 'GET' });
+                if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
+
+                const projects = await response.json();
+                tbody.innerHTML = ''; 
+
+                if (projects.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5">You are not assigned as a Project Manager for any projects.</td></tr>';
+                    return;
+                }
+
+                projects.forEach(item => {
+                    const tr = document.createElement('tr');
+                    
+                    // (*** ใหม่: สร้างปุ่ม Action ตาม Status ***)
+                    let actionButtons = `
+                        <button class"btn-edit" style="background-color: #007bff;" onclick="manageProject(${item.projectId})">Manage Team & Tasks</button>
+                    `;
+                    
+                    if (item.status.toLowerCase() !== 'completed') {
+                        // (ถ้ายังไม่เสร็จ -> โชว์ปุ่ม "ปิด")
+                        actionButtons += `
+                            <button class"btn-edit" style="background-color: #28a745;" onclick="updateProjectStatus(${item.projectId}, 'Completed')">Mark as Completed</button>
+                        `;
+                    } else {
+                        // (ถ้าเสร็จแล้ว -> โชว์ปุ่ม "เปิดใหม่")
+                        actionButtons += `
+                            <button class"btn-edit" style="background-color: #ffc107; color: #333;" onclick="updateProjectStatus(${item.projectId}, 'Active')">Re-Open Project</button>
+                        `;
+                    }
+                    
+                    tr.innerHTML = `
+                        <td>${item.projectName}</td>
+                        <td>${item.status}</td>
+                        <td>${formatLocalDate(item.startDate)}</td>
+                        <td>${formatLocalDate(item.endDate)}</td>
+                        <td class="actions-cell">
+                            ${actionButtons}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (error) {
+                console.error('Load Error:', error);
+                showMessage('listMessage', error.message);
+                tbody.innerHTML = `<tr><td colspan="5" style="color: red;">Error loading data.</td></tr>`;
+            }
+        }
+
+        // 2. ฟังก์ชันสำหรับปุ่ม "Manage" (เหมือนเดิม)
+        function manageProject(projectId) {
+            window.location.href = `manage_project_detail.html?projectId=${projectId}`;
+        }
+        
+        // (*** 3. (ใหม่!) ฟังก์ชัน "ปุ่มกดเดียว" (One-Click) ***)
+        async function updateProjectStatus(projectId, newStatus) {
+            
+            const action = newStatus === 'Completed' ? 'Close' : 'Re-Open';
+            if (!confirm(`Are you sure you want to ${action} this project?`)) {
+                return;
+            }
+
+            showMessage('listMessage', `Updating project ${projectId}...`);
+            
+            try {
+                // (เรียก API ใหม่ที่เราสร้าง: /api/projects/{id}/update-status)
+                const response = await fetch(`${API_BASE_URL}/projects/${projectId}/update-status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (!response.ok) {
+                    let errorMessage = `Error: ${response.status}`;
+                    try { const errorData = await response.json(); errorMessage = errorData.message || errorMessage;} catch (e) {}
+                    throw new Error(errorMessage);
+                }
+                
+                showMessage('listMessage', `Project status updated to ${newStatus}.`, true);
+                
+                // (โหลดตารางใหม่)
+                const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+                if (currentUser && currentUser.employeeId) {
+                    loadMyManagedProjects(currentUser.employeeId); 
+                }
+                
+            } catch (error) {
+                 console.error('Update Status Error:', error);
+                 showMessage('listMessage', error.message);
+            }
+        }
+
+
+        // --- รันฟังก์ชันเมื่อหน้าเว็บโหลด ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentUser = checkAuthAndLoadUserInfo();
+            if (currentUser && currentUser.role === 'Manager' && currentUser.employeeId) {
+                loadMyManagedProjects(currentUser.employeeId);
+            } else {
+                alert("You do not have permission to view this page.");
+                window.location.href = 'index.html'; 
+            }
+        });
+    </script>
+</body>
+</html>

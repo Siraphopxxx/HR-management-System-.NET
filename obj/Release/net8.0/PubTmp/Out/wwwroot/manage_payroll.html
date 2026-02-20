@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Payroll</title>
+    <link rel="stylesheet" href="common.css">
+    <link rel="stylesheet" href="admin.css"> 
+</head>
+<body>
+    <div id="app" class="role-page admin-page"> 
+        <header>
+            <h1>Manage Payroll</h1>
+            <div id="userInfoDisplay">Loading user info...</div>
+        </header>
+        <main>
+            <a href="hr.html" class="back-link">&larr; Back to Dashboard</a>
+
+            <div id="runSection" class="function-placeholder" style="background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 1.5rem; width: 100%; box-sizing: border-box; text-align: left;">
+                <h3>Run New Payroll</h3>
+                <form id="runForm" style="display: flex; gap: 1rem; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <label for="runMonth">Select Month:</label>
+                        <select id="runMonth" required style="width: 100%; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px;">
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="runYear">Enter Year:</label>
+                        <input type="number" id="runYear" required style="width: 100%; padding: 0.5rem; border: 1px solid #ced4da; border-radius: 4px;" placeholder="e.g., 2024">
+                    </div>
+                    <button type="submit" id="runButton" style="padding: 0.6rem 1.2rem; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Run Payroll</button>
+                </form>
+                <div id="runMessage" class="message"></div>
+            </div>
+
+            <hr style="margin: 2rem 0;">
+
+            <h2>Payroll History</h2>
+            <div class="function-placeholder" style="padding: 0; border: none; background: none;">
+                <table id="listTable">
+                    <thead>
+                        <tr>
+                            <th>Employee Name</th>
+                            <th>Pay Date</th>
+                            <th>Total Income</th>
+                            <th>Total Deductions</th>
+                            <th>Net Salary</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listTbody">
+                        </tbody>
+                </table>
+                <div id="listMessage" class="message"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="script-rolepages.js"></script>
+    <script>
+        
+        // (Helper: ตั้งค่าเดือน/ปี ปัจจุบัน)
+        function setFormDefaults() {
+            const now = new Date();
+            // (เรามักจะ "รัน" Payroll ของ "เดือนที่แล้ว")
+            const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            
+            document.getElementById('runMonth').value = lastMonth.getMonth() + 1; // (JS month 0-11)
+            document.getElementById('runYear').value = lastMonth.getFullYear();
+        }
+        
+        // (Helper: แปลง Date)
+        function formatLocalDate(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('th-TH', {
+                    year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok'
+                });
+            } catch (e) { return 'N/A'; }
+        }
+
+        // 1. ฟังก์ชันโหลด "ประวัติ"
+        async function loadPayrollHistory() {
+            const tbody = document.getElementById('listTbody');
+            const messageDiv = document.getElementById('listMessage');
+            if (!tbody || !messageDiv) return;
+
+            tbody.innerHTML = '<tr><td colspan="6">Loading history...</td></tr>';
+            showMessage('listMessage', '');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/payroll/history`, { method: 'GET' });
+                if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
+
+                const history = await response.json();
+                tbody.innerHTML = ''; 
+
+                if (history.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6">No payroll history found.</td></tr>';
+                    return;
+                }
+
+                history.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${item.employeeName}</td>
+                        <td>${formatLocalDate(item.payDate)}</td>
+                        <td>${item.totalIncome.toLocaleString()}</td>
+                        <td>${item.totalDeductions.toLocaleString()}</td>
+                        <td>${item.netSalary.toLocaleString()}</td>
+                        <td>${item.status}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (error) {
+                console.error('Load History Error:', error);
+                showMessage('listMessage', error.message);
+                tbody.innerHTML = `<tr><td colspan="6" style="color: red;">Error loading data.</td></tr>`;
+            }
+        }
+
+        // 2. ฟังก์ชัน "กดปุ่ม Run"
+        function setupRunForm() {
+            const runForm = document.getElementById('runForm');
+            const runButton = document.getElementById('runButton');
+            if (!runForm || !runButton) return;
+
+            runForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                if (!confirm("Are you sure you want to run payroll for this period? This action cannot be undone.")) {
+                    return;
+                }
+                
+                showMessage('runMessage', 'Running payroll... This may take a moment.');
+                runButton.disabled = true;
+                runButton.textContent = "Running...";
+                
+                const inputModel = {
+                    month: parseInt(document.getElementById('runMonth').value),
+                    year: parseInt(document.getElementById('runYear').value)
+                };
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/payroll/run`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(inputModel)
+                    });
+                    
+                    const result = await response.json(); // (อ่าน body เสมอ)
+
+                    if (!response.ok) {
+                        throw new Error(result.message || `Error: ${response.status}`);
+                    }
+
+                    showMessage('runMessage', result.message, true);
+                    loadPayrollHistory(); // โหลดตารางใหม่
+                } catch (error) {
+                    console.error('Run Payroll Error:', error);
+                    showMessage('runMessage', error.message);
+                } finally {
+                    runButton.disabled = false;
+                    runButton.textContent = "Run Payroll";
+                }
+            });
+        }
+
+        // --- รันฟังก์ชันเมื่อหน้าเว็บโหลด ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentUser = checkAuthAndLoadUserInfo();
+            if (currentUser && (currentUser.role === 'HR')) { // (จำกัดแค่ HR)
+                setFormDefaults();
+                setupRunForm();
+                loadPayrollHistory();
+            } else {
+                alert("You do not have permission to view this page.");
+                window.location.href = 'index.html'; 
+            }
+        });
+    </script>
+</body>
+</html>

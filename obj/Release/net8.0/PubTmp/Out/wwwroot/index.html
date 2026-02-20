@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR System - Login</title>
+    <link rel="stylesheet" href="common.css"> <link rel="stylesheet" href="login.css">  </head>
+<body>
+    <div id="app" class="login-page"> 
+
+        <h1>HR System</h1>
+        <form id="loginForm">
+            <div>
+                <label for="userName">Name (Username):</label>
+                <input type="text" id="userName" name="userName" required>
+            </div>
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit">Login</button>
+        </form>
+        <div id="message"></div>
+
+    </div>
+
+    <script>
+        // --- โค้ด JavaScript สำหรับหน้า Login เท่านั้น ---
+        const loginForm = document.getElementById('loginForm');
+        const messageDiv = document.getElementById('message');
+        // *** แก้ไข URL ของ Backend API ให้ตรงกับที่คุณรัน (เช่น Port 5173) ***
+        const API_BASE_URL = '/api';
+
+        function showMessage(text, isSuccess = false) {
+            messageDiv.textContent = text;
+            messageDiv.className = isSuccess ? 'success' : '';
+        }
+
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                showMessage('Logging in...');
+
+                const userName = event.target.userName.value;
+                const password = event.target.password.value;
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/Auth/simple-login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: userName, password: password })
+                    });
+
+                    if (!response.ok) {
+                        let errorMessage = `Error: ${response.status}`;
+                        try {
+                            const errorData = await response.json();
+                            errorMessage = errorData.message || errorMessage;
+                        } catch (e) { /* Ignore */ }
+                        throw new Error(errorMessage);
+                    }
+
+                    const userData = await response.json();
+
+                    if (userData && userData.role) {
+                        const rolePage = userData.role.toLowerCase() + '.html';
+                        // ***** เปลี่ยนเป็น sessionStorage *****
+                        sessionStorage.setItem('currentUser', JSON.stringify(userData));
+                        // ***** จบส่วนแก้ไข *****
+                        window.location.href = rolePage; // Redirect!
+                    } else {
+                         throw new Error('Login failed or role not found in response.');
+                    }
+
+                } catch (error) {
+                    console.error("Login process failed:", error);
+                    showMessage(error.message);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
